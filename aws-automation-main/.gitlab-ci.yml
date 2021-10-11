@@ -1,0 +1,24 @@
+stages:          
+  - deploy
+deploy-job:      
+  stage: deploy  
+  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest 
+  variables:
+    TEMPLATE: EC2InstanceWithSecurityGroupSample.json
+    STACKNAME: teststack
+    PARAMETERS: KeyName=vivaldi-keypair-useast2 InstanceType=t2.micro
+  script:
+    - |
+      cfnparams=""
+      for PARAMETER in $PARAMETERS
+      do
+        echo "The parameter is ${PARAMETER}"
+        pkey=`echo ${PARAMETER}|awk -F= '{print $1}'`
+        pvalue=`echo ${PARAMETER}|awk -F= '{print $2}'`
+        cfnparams="$cfnparams ParameterKey=$pkey,ParameterValue=$pvalue "
+      done
+      #echo $cfnparams
+      echo "Listing current stacks..."
+      aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE
+      echo "Creating stack"
+      aws cloudformation create-stack --stack-name $STACKNAME --template-body file://templates/$TEMPLATE --parameters $cfnparams
